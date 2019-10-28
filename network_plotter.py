@@ -15,10 +15,16 @@ parser.add_argument('--csv-path', dest='csv_path', default='csv', type=str,
                     help='path to csv(s)')
 parser.add_argument('--filename', default="summary.csv", type=str,
                     help="Filename of the complete CSV")
+parser.add_argument('--epochs', default=20, type=int,
+                    help="Last N epochs to look zoom in on")
+parser.add_argument('--early-stop', default=20, dest='early_stop', type=int,
+                    help="Checks last N epochs for a decrease in loss")
 
 args = parser.parse_args()
 CWD = os.getcwd()
 CSV = args.csv_path
+last_epochs = args.epochs
+early_stop = args.early_stop
 
 def _concat_csv(all_filenames):
     print("Merging CSV files...")
@@ -72,14 +78,14 @@ def _plot_error(summary):
     p1.set_ylabel("Error")
     p1.legend(loc='upper right')
 
-    p2.set_title("Training Loss: Last 20 Epochs")
-    p2.plot(x.tail(20), loss['train_loss'].tail(20), label="Training loss")
+    p2.set_title("Training Loss: Last {} Epochs".format(last_epochs))
+    p2.plot(x.tail(last_epochs), loss['train_loss'].tail(last_epochs), label="Training loss")
     p1.set_xlabel("Epochs")
     p1.set_ylabel("Error")
     p2.legend(loc='upper right')
 
-    p3.set_title("Validation Loss: Last 20 Epochs")
-    p3.plot(x.tail(20), loss['eval_loss'].tail(20),'orange', label="Validation loss")
+    p3.set_title("Validation Loss: Last {} Epochs".format(last_epochs))
+    p3.plot(x.tail(last_epochs), loss['eval_loss'].tail(last_epochs),'orange', label="Validation loss")
     p1.set_xlabel("Epochs")
     p1.set_ylabel("Error")
     p3.legend(loc='upper right')
@@ -111,8 +117,8 @@ def _plot_accuracy(summary):
 
     print("Highest top-1 accuracy: %0.2f @ epoch: [%i/%i]" % (max_acc, max_indx,x.size))
 
-    p2.set_title("Top 1: Last 20 epochs")
-    p2.plot(x.tail(20), prec['eval_prec1'].tail(20), 'r', label="Top 1")
+    p2.set_title("Top 1: Last {} Epochs".format(last_epochs))
+    p2.plot(x.tail(last_epochs), prec['eval_prec1'].tail(last_epochs), 'r', label="Top 1")
     for var in (top1):
         p2.annotate('%0.2f, %0.2f' % (max_indx, max_acc), xy=(max_indx, max_acc), xytext=(8, 0), 
             xycoords=('axes fraction', 'data'), textcoords='offset points')
@@ -120,8 +126,8 @@ def _plot_accuracy(summary):
     p2.set_ylabel("Validation Accuracy")
     p2.legend(loc='upper right')
 
-    p3.set_title("Top 5: Last 20 epochs")
-    p3.plot(x.tail(20), prec['eval_prec5'].tail(20),'b', label="Top 5")
+    p3.set_title("Top 5: Last {} Epochs".format(last_epochs))
+    p3.plot(x.tail(last_epochs), prec['eval_prec5'].tail(last_epochs),'b', label="Top 5")
     p3.set_xlabel("Epochs")
     p3.set_ylabel("Validation Accuracy")
     p3.legend(loc='upper right')
@@ -130,7 +136,7 @@ def _plot_accuracy(summary):
     plt.savefig("Validation Accuracy")
 
 def _early_stop(summary):
-    loss = summary.tail(20)[['eval_loss']].values
+    loss = summary.tail(early_stop)[['train_loss']].values
 
     keep_training = True
 
@@ -150,7 +156,7 @@ def _early_stop(summary):
             count = count + 1
         
         # If no better local minima has been found in 20 epochs, stop training
-        if count == 20:
+        if count == early_stop:
             keep_training = False
         
     if keep_training:
